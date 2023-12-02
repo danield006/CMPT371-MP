@@ -26,7 +26,6 @@ def requestIsGood(request, socket):
           
           socket.sendall(responseData.encode('utf-8'))
           socket.close()
-          print("400 bad request")
           return False
      
      return True
@@ -38,7 +37,6 @@ def requestNotForbidden(path, socket):
           
           socket.sendall(responseData.encode('utf-8'))
           socket.close()
-          print("403 forbidden")
           return False
      
      return True
@@ -50,7 +48,6 @@ def contentLengthDefined(request, socket):
           
           socket.sendall(responseData.encode('utf-8'))
           socket.close()
-          print("411 content length")
           return False
      
      return True
@@ -61,7 +58,6 @@ def notFound(socket):
      
      socket.sendall(responseData.encode('utf-8'))
      socket.close()
-     print("404 not found")
      
      
 def modifiedSince(request, socket, lastModified):
@@ -81,7 +77,6 @@ def modifiedSince(request, socket, lastModified):
      
                          socket.sendall(responseData.encode('utf-8'))
                          socket.close()
-                         print("304 not modified")
                          return False
      return True
 
@@ -123,7 +118,6 @@ while True:
                     
                     connectionSocket.sendall(responseData.encode('utf-8'))
                     connectionSocket.close()
-                    print("200 ok")
                     
           except FileNotFoundError:
                notFound(connectionSocket)
