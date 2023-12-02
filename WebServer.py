@@ -1,6 +1,7 @@
 from socket import *
 from datetime import *
 
+
 def getDate(date): 
      #parse request date and create datetime object for comparison
      months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -89,7 +90,7 @@ serverSocket.bind(('localhost',serverPort))
 fileLastModified = datetime(2023, 11, 30)
 
 serverSocket.listen(1)
-print ('Web server online.')
+print (f'Web server listening on port {serverPort}...')
 
 
 # Listening loop
