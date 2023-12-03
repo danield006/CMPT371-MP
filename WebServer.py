@@ -43,7 +43,7 @@ def requestNotForbidden(path, socket):
      return True
 
 def contentLengthDefined(request, socket):
-     if 'Content-Length' not in requestData:
+     if 'Content-Length' not in request:
           # Respond with a 411 Length Required status code
           responseData = 'HTTP/1.1 411 Length Required\r\nContent-Type: text/html\r\n\r\n<html><body><h1>411 Length Required</h1><p>Content-Length header is required.</p>'
           
