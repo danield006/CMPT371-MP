@@ -1,4 +1,5 @@
 from socket import *
+import threading
 from datetime import *
 
 
@@ -81,11 +82,41 @@ def modifiedSince(request, socket, lastModified):
                          return False
      return True
 
+def handleClient(connection):
+     # Read from socket
+     requestData = connection.recv(1024).decode('utf-8')
+     print('Request recieved: ')
+     print(requestData)
+     if(requestIsGood(requestData, connection)):
+          try:
+               pathName = requestData.split(' ')[1]
+               if pathName == '/':
+                    pathName = '/index.html' # If no path, redirect to index page
+               print(pathName)
+               # Read the content of the requested file
+               with open('.' + pathName, 'r') as file:
+                    content = file.read()
+               if(requestNotForbidden(pathName, connection) and contentLengthDefined(requestData, connection) and modifiedSince(requestData, connection, fileLastModified)):
+                    
+
+                    # Respond with a 200 OK status code
+                    responseData = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{content}'
+                    
+                    connection.sendall(responseData.encode('utf-8'))
+                    connection.close()
+                    
+          except FileNotFoundError:
+               notFound(connection)
+          except PermissionError:
+               notFound(connection)
+
+
 # Init server
 serverPort = 12000
 
 serverSocket = socket(AF_INET,SOCK_STREAM)
 serverSocket.bind(('localhost',serverPort))
+
 
 fileLastModified = datetime(2023, 11, 30)
 
@@ -96,33 +127,6 @@ print (f'Web server listening on port {serverPort}...')
 # Listening loop
 while True:
      connectionSocket, addr = serverSocket.accept()
-     
-     # Read from socket
-     requestData = connectionSocket.recv(1024).decode('utf-8')
-     print('Request recieved: ')
-     print(requestData)
-     
-     if(requestIsGood(requestData, connectionSocket)):
-          try:
-               pathName = requestData.split(' ')[1]
-               if pathName == '/':
-                    pathName = '/index.html' # If no path, redirect to index page
-               print(pathName)
-               # Read the content of the requested file
-               with open('.' + pathName, 'r') as file:
-                    content = file.read()
-               if(requestNotForbidden(pathName, connectionSocket) and contentLengthDefined(requestData, connectionSocket) and modifiedSince(requestData, connectionSocket, fileLastModified)):
-                    
-
-                    # Respond with a 200 OK status code
-                    responseData = f'HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n{content}'
-                    
-                    connectionSocket.sendall(responseData.encode('utf-8'))
-                    connectionSocket.close()
-                    
-          except FileNotFoundError:
-               notFound(connectionSocket)
-          except PermissionError:
-               notFound(connectionSocket)
-          
-     
+     #create a thread that calls handleClient
+     clientHandler = threading.Thread(target=handleClient, args=(connectionSocket,))
+     clientHandler.start()

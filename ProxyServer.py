@@ -31,31 +31,37 @@ def handleClient(clientConnection):
     print('Request received from client:')
     print(requestData.decode('utf-8'))
 
-    # Parse "If-Modified-Since" header from the client request
+    # Parse headers from the client request
     if_modified_since = None
     lines = requestData.decode('utf-8').split("\n")
     for line in lines:
+        if 'GET /' in line:
+            temp = line.split(' ')
+            req = temp[0] + ' ' + temp[1]
+        if 'User-Agent:' in line:
+            user = line.split(': ')[1]
         if 'If-Modified-Since' in line:
             date = line.split(': ')[1]
             if_modified_since = getDate(date)
             break
 
     # Check if the request is in the cache and can be used
-    if requestData in cache and if_modified_since:
-        date = cache.get(requestData).get('last_modified_date', None)
-        last_modified_date = getDate(date)
+    if if_modified_since:
+        for request in cache:
+            cacheReq = cache.get(request).get('request', None)
+            cacheUser = cache.get(request).get('user_agent', None)
+            cacheDate = cache.get(request).get('last_modified_date', None)
+            #if headers match AND cached date is newer than request date (ie: )
+            if(cacheReq == req and cacheUser == user and cacheDate >= if_modified_since):
+                print("/////////////////////////////////////////////")
+                print('Cache hit! Sending cached response to client.')
+                print("/////////////////////////////////////////////")
+                responseData = 'HTTP/1.1 304 Not Modified\r\nContent-Type: text/html\r\n\r\n<h1>304 Not Modified</h1>' #else, send 304 to simulate client loading site from cache
+        
+                clientConnection.sendall(responseData.encode('utf-8'))
+                clientConnection.close()
+                return
 
-        if last_modified_date and last_modified_date >= if_modified_since:
-            print('Cache hit! Sending cached response to client.')
-            responseData = 'HTTP/1.1 304 Not Modified\r\nContent-Type: text/html\r\n\r\n<h1>304 Not Modified</h1>' #else, send 304 to simulate client loading site from cache
-     
-            clientConnection.sendall(responseData.encode('utf-8'))
-            clientConnection.close()
-            
-            #clientConnection.sendall(cache[requestData]['response'])
-            #print(cache[requestData]['response'].decode('utf-8'))
-            #clientConnection.close()
-            return
 
     # If not in cache or "If-Modified-Since" check failed, fetch from the web server
     webServerSocket = socket(AF_INET, SOCK_STREAM)
@@ -63,14 +69,16 @@ def handleClient(clientConnection):
 
     webServerSocket.sendall(requestData)
 
-    responseData = webServerSocket.recv(1024)
+    responseData = webServerSocket.recv(1024).decode('utf-8')
     print('Response received from web server:')
-    print(responseData.decode('utf-8'))
+    print(responseData)
 
-    # Store the response in the cache
-    cache[requestData] = {'response': responseData, 'last_modified_date': if_modified_since}
 
-    clientConnection.sendall(responseData)
+    # Store the response in the cache only if server delivers content to cache
+    if not '304 Not Modified' in responseData:
+        cache[requestData] = {'response': responseData, 'request': req, 'user_agent': user, 'last_modified_date': if_modified_since}
+
+    clientConnection.sendall(responseData.encode('utf-8'))
     clientConnection.close()
 
 proxySocket = socket(AF_INET,SOCK_STREAM)
