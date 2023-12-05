@@ -1,11 +1,29 @@
 from socket import *
 import threading
+from datetime import *
 
 proxyPort = 13000
 serverPort = 12000
 
 # Dictionary to store cached responses
 cache = {}
+
+def getDate(date): 
+     #parse request date and create datetime object for comparison
+     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+     
+     fields = date.split(' ')
+     time = fields[4].split(':')
+     
+     month = 1
+     for i in months:
+          if(i == fields[2]): #month text to numeric month val
+               break
+          month = month + 1
+               
+     requestDate = datetime(int(fields[3]), month, int(fields[1]), int(time[0]), int(time[1]), int(time[2]))
+     
+     return requestDate
 
 def handleClient(clientConnection):
     # Recieve request from client
@@ -18,18 +36,25 @@ def handleClient(clientConnection):
     lines = requestData.decode('utf-8').split("\n")
     for line in lines:
         if 'If-Modified-Since' in line:
-            if_modified_since = line.split(': ')[1].strip()
+            date = line.split(': ')[1]
+            if_modified_since = getDate(date)
             break
 
     # Check if the request is in the cache and can be used
     if requestData in cache and if_modified_since:
-        last_modified_date = cache.get(requestData).get('last_modified_date', None)
+        date = cache.get(requestData).get('last_modified_date', None)
+        last_modified_date = getDate(date)
 
         if last_modified_date and last_modified_date >= if_modified_since:
             print('Cache hit! Sending cached response to client.')
-            clientConnection.sendall(cache[requestData]['response'])
-            print(cache[requestData]['response'].decode('utf-8'))
+            responseData = 'HTTP/1.1 304 Not Modified\r\nContent-Type: text/html\r\n\r\n<h1>304 Not Modified</h1>' #else, send 304 to simulate client loading site from cache
+     
+            clientConnection.sendall(responseData.encode('utf-8'))
             clientConnection.close()
+            
+            #clientConnection.sendall(cache[requestData]['response'])
+            #print(cache[requestData]['response'].decode('utf-8'))
+            #clientConnection.close()
             return
 
     # If not in cache or "If-Modified-Since" check failed, fetch from the web server
